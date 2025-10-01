@@ -34,7 +34,7 @@
         function App() {
             const [tab, setTab] = useState('dashboard');
             const [menu, setMenu] = useState(false);
-            const [filter, setFilter] = useState('todos');
+            const [usuarioAtivo, setUsuarioAtivo] = useState('todos');
             const [data, setData] = useState({
                 users: [
                     { id: 1, nome: 'Você', cor: '#007AFF' },
@@ -103,9 +103,27 @@
             const spent = expTotal + subsTotal + billsTotal + toolsTotal;
             const balance = income - spent;
             const netWorth = assetsTotal + investTotal - debtsTotal;
-            const filtered = filter === 'todos' ? data.exp : data.exp.filter(e => e.usuarioId === parseInt(filter));
+            
+            // Filtrar dados por usuário ativo
+            const gastosUsuario = usuarioAtivo === 'todos' ? data.exp : data.exp.filter(e => e.usuarioId === parseInt(usuarioAtivo));
+            const salariosUsuario = usuarioAtivo === 'todos' ? data.salaries : data.salaries.filter(s => s.usuarioId === parseInt(usuarioAtivo));
+            const cartoesUsuario = usuarioAtivo === 'todos' ? data.cards : data.cards.filter(c => c.usuarioId === parseInt(usuarioAtivo));
+            
+            const incomeUsuario = salariosUsuario.reduce((a, s) => a + s.valor, 0);
+            const gastosUsuarioTotal = gastosUsuario.reduce((a, e) => a + e.valor, 0);
+            const saldoUsuario = incomeUsuario - (gastosUsuarioTotal + (usuarioAtivo === 'todos' ? subsTotal + billsTotal + toolsTotal : 0));
 
-            const open = (type, item) => { setModal(type); setEditing(item); setForm(item || {}); };
+            const open = (type, item) => { 
+                setModal(type); 
+                setEditing(item); 
+                if (item) {
+                    setForm(item);
+                } else {
+                    // Auto-preencher usuarioId quando criar novo gasto/cartão
+                    const defaultUserId = usuarioAtivo !== 'todos' ? parseInt(usuarioAtivo) : data.users[0]?.id || 1;
+                    setForm(type === 'exp' || type === 'card' ? { usuarioId: defaultUserId } : {});
+                }
+            };
             const close = () => { setModal(null); setEditing(null); setForm({}); };
 
             const save = () => {
@@ -146,9 +164,19 @@
                         </aside>
 
                         <main className="flex-1 overflow-y-auto">
-                            <header className="lg:hidden bg-zinc-900 p-4 flex justify-between items-center">
+                            <header className="bg-zinc-900 border-b border-zinc-800 p-4 flex justify-between items-center sticky top-0 z-30">
                                 <h1 className="text-xl font-bold">Financeiro</h1>
-                                <button onClick={() => setMenu(!menu)} className="p-2">☰</button>
+                                <div className="flex items-center gap-3">
+                                    <select 
+                                        value={usuarioAtivo} 
+                                        onChange={e => setUsuarioAtivo(e.target.value)} 
+                                        className="input text-white px-4 py-2 rounded-xl font-medium text-sm"
+                                    >
+                                        <option value="todos">Família (Todos)</option>
+                                        {data.users.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                                    </select>
+                                    <button onClick={() => setMenu(!menu)} className="p-2 lg:hidden">☰</button>
+                                </div>
                             </header>
 
                             {menu && (
@@ -172,18 +200,29 @@
                             <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
                                 {tab === 'dashboard' && (
                                     <div className="space-y-6">
+                                        {usuarioAtivo !== 'todos' && (
+                                            <div className="card rounded-2xl p-4 sm:p-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full" style={{ backgroundColor: data.users.find(u => u.id === parseInt(usuarioAtivo))?.cor }} />
+                                                    <div>
+                                                        <h2 className="text-xl sm:text-2xl font-bold">{data.users.find(u => u.id === parseInt(usuarioAtivo))?.nome}</h2>
+                                                        <p className="text-sm text-zinc-400">Visualização individual</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                             <div className="bg-gradient-to-br from-green-600 to-green-700 p-5 sm:p-6 rounded-3xl">
                                                 <h3 className="text-xs sm:text-sm mb-1 font-medium">Receitas</h3>
-                                                <p className="text-3xl sm:text-4xl font-bold">{fmt(income)}</p>
+                                                <p className="text-3xl sm:text-4xl font-bold">{fmt(usuarioAtivo === 'todos' ? income : incomeUsuario)}</p>
                                             </div>
                                             <div className="bg-gradient-to-br from-red-600 to-red-700 p-5 sm:p-6 rounded-3xl">
                                                 <h3 className="text-xs sm:text-sm mb-1 font-medium">Despesas</h3>
-                                                <p className="text-3xl sm:text-4xl font-bold">{fmt(spent)}</p>
+                                                <p className="text-3xl sm:text-4xl font-bold">{fmt(usuarioAtivo === 'todos' ? spent : gastosUsuarioTotal)}</p>
                                             </div>
                                             <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-5 sm:p-6 rounded-3xl">
                                                 <h3 className="text-xs sm:text-sm mb-1 font-medium">Saldo</h3>
-                                                <p className="text-3xl sm:text-4xl font-bold">{fmt(balance)}</p>
+                                                <p className="text-3xl sm:text-4xl font-bold">{fmt(usuarioAtivo === 'todos' ? balance : saldoUsuario)}</p>
                                             </div>
                                             <div className="bg-gradient-to-br from-purple-600 to-purple-700 p-5 sm:p-6 rounded-3xl">
                                                 <h3 className="text-xs sm:text-sm mb-1 font-medium">Score</h3>
@@ -228,19 +267,17 @@
 
                                 {tab === 'gastos' && (
                                     <div>
-                                        <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                            <div>
-                                                <h2 className="text-2xl sm:text-3xl font-bold mb-2">Gastos</h2>
-                                                <p className="text-sm sm:text-base text-zinc-400">Total: <span className="text-white font-semibold">{fmt(filtered.reduce((a, e) => a + e.valor, 0))}</span></p>
-                                            </div>
-                                            <select value={filter} onChange={e => setFilter(e.target.value)} className="input text-white px-4 py-3 rounded-xl w-full sm:w-auto">
-                                                <option value="todos">Todos</option>
-                                                {data.users.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-                                            </select>
+                                        <div className="mb-6">
+                                            <h2 className="text-2xl sm:text-3xl font-bold mb-2">Gastos {usuarioAtivo !== 'todos' && `- ${data.users.find(u => u.id === parseInt(usuarioAtivo))?.nome}`}</h2>
+                                            <p className="text-sm sm:text-base text-zinc-400">Total: <span className="text-white font-semibold">{fmt(gastosUsuario.reduce((a, e) => a + e.valor, 0))}</span></p>
                                         </div>
-                                        <button onClick={() => open('exp')} className="w-full btn text-white px-6 py-4 rounded-xl font-semibold mb-6">+ Adicionar</button>
+                                        <button onClick={() => open('exp')} className="w-full btn text-white px-6 py-4 rounded-xl font-semibold mb-6">+ Adicionar Gasto</button>
                                         <div className="space-y-4">
-                                            {filtered.map(e => (
+                                            {gastosUsuario.length === 0 ? (
+                                                <div className="card p-8 rounded-2xl text-center text-zinc-400">
+                                                    <p>Nenhum gasto registrado ainda</p>
+                                                </div>
+                                            ) : gastosUsuario.map(e => (
                                                 <div key={e.id} className="card p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row justify-between gap-4">
                                                     <div className="flex-1">
                                                         <h4 className="font-semibold text-lg sm:text-xl mb-2">{e.descricao}</h4>
@@ -313,10 +350,16 @@
 
                                 {tab === 'cartoes' && (
                                     <div>
-                                        <h2 className="text-2xl sm:text-3xl font-bold mb-6">Cartões</h2>
-                                        <button onClick={() => open('card')} className="w-full btn text-white px-6 py-4 rounded-xl font-semibold mb-6">+ Adicionar</button>
+                                        <div className="mb-6">
+                                            <h2 className="text-2xl sm:text-3xl font-bold mb-2">Cartões {usuarioAtivo !== 'todos' && `- ${data.users.find(u => u.id === parseInt(usuarioAtivo))?.nome}`}</h2>
+                                        </div>
+                                        <button onClick={() => open('card')} className="w-full btn text-white px-6 py-4 rounded-xl font-semibold mb-6">+ Adicionar Cartão</button>
                                         <div className="space-y-4">
-                                            {data.cards.map(c => {
+                                            {cartoesUsuario.length === 0 ? (
+                                                <div className="card p-8 rounded-2xl text-center text-zinc-400">
+                                                    <p>Nenhum cartão registrado ainda</p>
+                                                </div>
+                                            ) : cartoesUsuario.map(c => {
                                                 const p = (c.gasto / c.limite) * 100;
                                                 const u = data.users.find(us => us.id === c.usuarioId);
                                                 return (
