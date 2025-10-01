@@ -11,18 +11,43 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-        body { margin: 0; background: #000; }
-        .card { 
-            background: rgba(255, 255, 255, 0.05); 
-            backdrop-filter: blur(20px); 
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-            transition: all 0.3s; 
-        }
-        .card:hover { background: rgba(255, 255, 255, 0.08); transform: translateY(-2px); }
-        .btn { background: #007AFF; transition: all 0.2s; }
+        body { margin: 0; }
+        
+        /* Dark Mode */
+        .dark { background: #000; color: #fff; }
+        .dark .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .dark .card:hover { background: rgba(255, 255, 255, 0.08); }
+        .dark .input, .dark .user-select { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #fff; }
+        .dark .input:focus, .dark .user-select:focus { background: rgba(255, 255, 255, 0.15); border-color: #007AFF; }
+        .dark .user-select option { background: #1a1a1a; color: #fff; }
+        .dark .sidebar { background: #18181b; border-color: #27272a; }
+        .dark .header { background: #18181b; border-color: #27272a; }
+        
+        /* Light Mode */
+        .light { background: #f5f5f7; color: #1d1d1f; }
+        .light .card { background: #fff; border: 1px solid #e5e5e7; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .light .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .light .input, .light .user-select { background: #fff; border: 1px solid #d2d2d7; color: #1d1d1f; }
+        .light .input:focus, .light .user-select:focus { border-color: #007AFF; }
+        .light .user-select option { background: #fff; color: #1d1d1f; }
+        .light .sidebar { background: #fff; border-color: #e5e5e7; }
+        .light .header { background: #fff; border-color: #e5e5e7; }
+        .light .text-white { color: #1d1d1f !important; }
+        .light .text-zinc-400 { color: #86868b !important; }
+        .light .text-zinc-900 { color: #1d1d1f !important; }
+        .light .bg-zinc-900 { background: #fff !important; }
+        .light .bg-zinc-800 { background: #f5f5f7 !important; }
+        .light .border-zinc-800 { border-color: #e5e5e7 !important; }
+        .light .bg-black { background: #f5f5f7 !important; }
+        
+        /* Common */
+        .card { backdrop-filter: blur(20px); transition: all 0.3s; }
+        .card:hover { transform: translateY(-2px); }
+        .btn { background: #007AFF; transition: all 0.2s; color: #fff; }
         .btn:hover { background: #0051D5; transform: scale(1.02); }
-        .input { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .input:focus { background: rgba(255, 255, 255, 0.08); border-color: #007AFF; outline: 0; }
+        .input, .user-select { transition: all 0.2s; }
+        .user-select { cursor: pointer; font-weight: 500; }
+        .user-select:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -35,6 +60,7 @@
             const [tab, setTab] = useState('dashboard');
             const [menu, setMenu] = useState(false);
             const [usuarioAtivo, setUsuarioAtivo] = useState('todos');
+            const [darkMode, setDarkMode] = useState(true);
             const [data, setData] = useState({
                 users: [
                     { id: 1, nome: 'Você', cor: '#007AFF' },
@@ -81,14 +107,22 @@
 
             useEffect(() => {
                 const d = localStorage.getItem('finData');
+                const theme = localStorage.getItem('darkMode');
                 if (d) {
                     try { setData(JSON.parse(d)); } catch (e) { }
+                }
+                if (theme !== null) {
+                    setDarkMode(theme === 'true');
                 }
             }, []);
 
             useEffect(() => {
                 localStorage.setItem('finData', JSON.stringify(data));
             }, [data]);
+
+            useEffect(() => {
+                localStorage.setItem('darkMode', darkMode.toString());
+            }, [darkMode]);
 
             const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -144,9 +178,9 @@
             const menus = ['dashboard', 'gastos', 'assinaturas', 'contas', 'cartoes', 'metas', 'orcamentos', 'ia', 'investimentos', 'patrimonio', 'dividas', 'emprestimos', 'usuarios'];
 
             return (
-                <div className="min-h-screen bg-black text-white">
+                <div className={`min-h-screen ${darkMode ? 'dark' : 'light'}`}>
                     <div className="flex h-screen">
-                        <aside className="hidden lg:flex flex-col w-64 bg-zinc-900 border-r border-zinc-800">
+                        <aside className={`hidden lg:flex flex-col w-64 sidebar border-r ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`}>
                             <div className="p-6 border-b border-zinc-800">
                                 <h1 className="text-2xl font-bold">Financeiro</h1>
                             </div>
@@ -155,7 +189,13 @@
                                     <button
                                         key={t}
                                         onClick={() => setTab(t)}
-                                        className={`w-full text-left px-4 py-3 rounded-xl font-medium transition ${tab === t ? 'bg-blue-600 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+                                        className={`w-full text-left px-4 py-3 rounded-xl font-medium transition ${
+                                            tab === t 
+                                                ? 'bg-blue-600 text-white' 
+                                                : darkMode 
+                                                    ? 'text-zinc-400 hover:bg-zinc-800' 
+                                                    : 'text-gray-700 hover:bg-gray-100'
+                                        }`}
                                     >
                                         {t === 'ia' ? 'IA/Dev' : t.charAt(0).toUpperCase() + t.slice(1)}
                                     </button>
@@ -164,30 +204,43 @@
                         </aside>
 
                         <main className="flex-1 overflow-y-auto">
-                            <header className="bg-zinc-900 border-b border-zinc-800 p-4 flex justify-between items-center sticky top-0 z-30">
+                            <header className={`header border-b p-4 flex justify-between items-center sticky top-0 z-30 backdrop-blur-xl ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-gray-200'}`}>
                                 <h1 className="text-xl font-bold">Financeiro</h1>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 sm:gap-3">
                                     <select 
                                         value={usuarioAtivo} 
                                         onChange={e => setUsuarioAtivo(e.target.value)} 
-                                        className="input text-white px-4 py-2 rounded-xl font-medium text-sm"
+                                        className="user-select px-3 sm:px-4 py-2 rounded-xl font-medium text-sm"
                                     >
-                                        <option value="todos">Família (Todos)</option>
+                                        <option value="todos">Família</option>
                                         {data.users.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
                                     </select>
-                                    <button onClick={() => setMenu(!menu)} className="p-2 lg:hidden">☰</button>
+                                    <button 
+                                        onClick={() => setDarkMode(!darkMode)} 
+                                        className="p-2 rounded-xl hover:bg-zinc-800 transition text-lg"
+                                        title={darkMode ? 'Modo Claro' : 'Modo Escuro'}
+                                    >
+                                        {darkMode ? '☀️' : '🌙'}
+                                    </button>
+                                    <button onClick={() => setMenu(!menu)} className="p-2 lg:hidden rounded-xl hover:bg-zinc-800">☰</button>
                                 </div>
                             </header>
 
                             {menu && (
                                 <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-90" onClick={() => setMenu(false)}>
-                                    <div className="w-64 h-full bg-zinc-900 p-4" onClick={e => e.stopPropagation()}>
+                                    <div className={`w-64 h-full p-4 ${darkMode ? 'bg-zinc-900' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
                                         <nav className="space-y-2">
                                             {menus.map(t => (
                                                 <button
                                                     key={t}
                                                     onClick={() => { setTab(t); setMenu(false); }}
-                                                    className={`w-full text-left px-4 py-3 rounded-xl font-medium ${tab === t ? 'bg-blue-600' : 'text-zinc-400 hover:bg-zinc-800'}`}
+                                                    className={`w-full text-left px-4 py-3 rounded-xl font-medium transition ${
+                                                        tab === t 
+                                                            ? 'bg-blue-600 text-white' 
+                                                            : darkMode 
+                                                                ? 'text-zinc-400 hover:bg-zinc-800' 
+                                                                : 'text-gray-700 hover:bg-gray-100'
+                                                    }`}
                                                 >
                                                     {t === 'ia' ? 'IA/Dev' : t.charAt(0).toUpperCase() + t.slice(1)}
                                                 </button>
