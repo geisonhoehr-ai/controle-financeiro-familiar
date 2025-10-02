@@ -71,8 +71,8 @@
                     { id: 2, usuarioId: 2, valor: 4000, descricao: 'Salário Esposa' }
                 ],
                 exp: [
-                    { id: 1, descricao: 'Mercado', valor: 450, usuarioId: 1, data: '2025-09-27' },
-                    { id: 2, descricao: 'Curso', valor: 197, usuarioId: 1, data: '2025-09-14' }
+                    { id: 1, descricao: 'Mercado', valor: 450, usuarioId: 1, data: '2025-09-27', categoria: 'Alimentação' },
+                    { id: 2, descricao: 'Curso', valor: 197, usuarioId: 1, data: '2025-09-14', categoria: 'Educação' }
                 ],
                 subs: [
                     { id: 1, nome: 'Netflix', valor: 55.90, ativa: true },
@@ -98,7 +98,9 @@
                     { id: 2, ferramenta: 'Cursor', valor: 120, ativa: true },
                     { id: 3, ferramenta: 'Lovable', valor: 113, ativa: true },
                     { id: 4, ferramenta: 'Supabase', valor: 25, ativa: true }
-                ]
+                ],
+                parcelas: [],
+                gasolina: []
             });
 
             const [modal, setModal] = useState(null);
@@ -131,10 +133,12 @@
             const subsTotal = data.subs.filter(s => s.ativa).reduce((a, s) => a + s.valor, 0);
             const billsTotal = data.bills.reduce((a, b) => a + b.valor, 0);
             const toolsTotal = data.tools.filter(t => t.ativa).reduce((a, t) => a + t.valor, 0);
+            const parcelasTotal = data.parcelas.reduce((a, p) => a + p.valorParcela, 0);
+            const gasolinaTotal = data.gasolina.reduce((a, g) => a + g.valor, 0);
             const investTotal = data.investments.reduce((a, i) => a + i.valor, 0);
             const assetsTotal = data.assets.reduce((a, as) => a + as.valor, 0);
             const debtsTotal = data.debts.reduce((a, d) => a + (d.valorTotal - d.valorPago), 0);
-            const spent = expTotal + subsTotal + billsTotal + toolsTotal;
+            const spent = expTotal + subsTotal + billsTotal + toolsTotal + parcelasTotal + gasolinaTotal;
             const balance = income - spent;
             const netWorth = assetsTotal + investTotal - debtsTotal;
             
@@ -161,10 +165,10 @@
             const close = () => { setModal(null); setEditing(null); setForm({}); };
 
             const save = () => {
-                if (!form.nome && !form.descricao && !form.ferramenta && !form.categoria) return alert('Preencha os campos');
+                if (!form.nome && !form.descricao && !form.ferramenta && !form.categoria && !form.produto && !form.veiculo) return alert('Preencha os campos');
                 const id = editing?.id || Date.now();
                 const item = { id, ...form };
-                const keyMap = { exp: 'exp', sub: 'subs', bill: 'bills', card: 'cards', goal: 'goals', budget: 'budgets', invest: 'investments', asset: 'assets', debt: 'debts', loan: 'loans', tool: 'tools', user: 'users', salary: 'salaries' };
+                const keyMap = { exp: 'exp', sub: 'subs', bill: 'bills', card: 'cards', goal: 'goals', budget: 'budgets', invest: 'investments', asset: 'assets', debt: 'debts', loan: 'loans', tool: 'tools', user: 'users', salary: 'salaries', parcela: 'parcelas', gasolina: 'gasolina' };
                 const key = keyMap[modal];
                 const list = data[key];
                 setData({ ...data, [key]: editing ? list.map(i => i.id === id ? item : i) : [...list, item] });
@@ -175,7 +179,7 @@
                 if (confirm('Excluir?')) setData({ ...data, [key]: data[key].filter(i => i.id !== id) });
             };
 
-            const menus = ['dashboard', 'gastos', 'assinaturas', 'contas', 'cartoes', 'metas', 'orcamentos', 'ia', 'investimentos', 'patrimonio', 'dividas', 'emprestimos', 'usuarios'];
+            const menus = ['dashboard', 'gastos', 'parcelas', 'gasolina', 'assinaturas', 'contas', 'cartoes', 'metas', 'orcamentos', 'ia', 'investimentos', 'patrimonio', 'dividas', 'emprestimos', 'usuarios'];
 
             return (
                 <div className={`min-h-screen ${darkMode ? 'dark' : 'light'}`}>
@@ -306,6 +310,8 @@
                                             <h3 className="text-2xl font-semibold mb-6">Resumo Mensal</h3>
                                             <div className="space-y-4">
                                                 <div className="flex justify-between"><span className="text-zinc-400">Gastos Variáveis</span><span className="font-semibold text-lg">{fmt(expTotal)}</span></div>
+                                                <div className="flex justify-between"><span className="text-zinc-400">Compras Parceladas</span><span className="font-semibold text-lg">{fmt(parcelasTotal)}</span></div>
+                                                <div className="flex justify-between"><span className="text-zinc-400">Gasolina</span><span className="font-semibold text-lg">{fmt(gasolinaTotal)}</span></div>
                                                 <div className="flex justify-between"><span className="text-zinc-400">Assinaturas</span><span className="font-semibold text-lg">{fmt(subsTotal)}</span></div>
                                                 <div className="flex justify-between"><span className="text-zinc-400">Contas Fixas</span><span className="font-semibold text-lg">{fmt(billsTotal)}</span></div>
                                                 <div className="flex justify-between"><span className="text-zinc-400">Ferramentas IA/Dev</span><span className="font-semibold text-lg">{fmt(toolsTotal)}</span></div>
@@ -334,7 +340,8 @@
                                                 <div key={e.id} className="card p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row justify-between gap-4">
                                                     <div className="flex-1">
                                                         <h4 className="font-semibold text-lg sm:text-xl mb-2">{e.descricao}</h4>
-                                                        <p className="text-xs sm:text-sm text-zinc-400">Por: {data.users.find(u => u.id === e.usuarioId)?.nome}</p>
+                                                        {e.categoria && <span className="text-xs bg-blue-600 px-2 py-1 rounded-full mr-2">{e.categoria}</span>}
+                                                        <p className="text-xs sm:text-sm text-zinc-400 mt-2">Por: {data.users.find(u => u.id === e.usuarioId)?.nome}</p>
                                                         <p className="text-xs sm:text-sm text-zinc-400">{new Date(e.data).toLocaleDateString('pt-BR')}</p>
                                                     </div>
                                                     <div className="flex justify-between sm:justify-end items-center gap-4">
@@ -342,6 +349,87 @@
                                                         <div className="flex sm:flex-col gap-3 sm:gap-2">
                                                             <button onClick={() => open('exp', e)} className="text-blue-500 text-sm">Editar</button>
                                                             <button onClick={() => del('exp', e.id)} className="text-red-500 text-sm">Remover</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {tab === 'parcelas' && (
+                                    <div>
+                                        <div className="mb-6">
+                                            <h2 className="text-2xl sm:text-3xl font-bold mb-2">Compras Parceladas</h2>
+                                            <p className="text-sm sm:text-base text-zinc-400">Total mensal: <span className="text-white font-semibold">{fmt(parcelasTotal)}</span></p>
+                                        </div>
+                                        <button onClick={() => open('parcela')} className="w-full btn text-white px-6 py-4 rounded-xl font-semibold mb-6">+ Adicionar Compra Parcelada</button>
+                                        <div className="space-y-4">
+                                            {data.parcelas.length === 0 ? (
+                                                <div className="card p-8 rounded-2xl text-center text-zinc-400">
+                                                    <p>Nenhuma compra parcelada registrada ainda</p>
+                                                </div>
+                                            ) : data.parcelas.map(p => {
+                                                const progresso = (p.parcelasPagas / p.totalParcelas) * 100;
+                                                return (
+                                                    <div key={p.id} className="card p-4 sm:p-6 rounded-2xl">
+                                                        <div className="flex flex-col sm:flex-row justify-between gap-4 mb-4">
+                                                            <div className="flex-1">
+                                                                <h4 className="font-semibold text-lg sm:text-xl mb-2">{p.produto}</h4>
+                                                                {p.categoria && <span className="text-xs bg-purple-600 px-2 py-1 rounded-full mr-2">{p.categoria}</span>}
+                                                                <p className="text-xs sm:text-sm text-zinc-400 mt-2">Parcela {p.parcelasPagas} de {p.totalParcelas}</p>
+                                                                <p className="text-xs sm:text-sm text-zinc-400">Valor total: {fmt(p.valorTotal)}</p>
+                                                            </div>
+                                                            <div className="flex justify-between sm:justify-end items-center gap-4">
+                                                                <div className="text-left sm:text-right">
+                                                                    <p className="text-2xl sm:text-3xl font-bold text-orange-500">{fmt(p.valorParcela)}</p>
+                                                                    <p className="text-xs sm:text-sm text-zinc-400">por mês</p>
+                                                                </div>
+                                                                <div className="flex sm:flex-col gap-3 sm:gap-2">
+                                                                    <button onClick={() => open('parcela', p)} className="text-blue-500 text-sm">Editar</button>
+                                                                    <button onClick={() => del('parcelas', p.id)} className="text-red-500 text-sm">Remover</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="w-full bg-zinc-800 rounded-full h-2 mb-2">
+                                                            <div className="bg-orange-500 rounded-full h-2" style={{ width: `${progresso}%` }} />
+                                                        </div>
+                                                        <p className="text-xs sm:text-sm text-zinc-400">{progresso.toFixed(1)}% pago • Faltam {p.totalParcelas - p.parcelasPagas} parcelas</p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {tab === 'gasolina' && (
+                                    <div>
+                                        <div className="mb-6">
+                                            <h2 className="text-2xl sm:text-3xl font-bold mb-2">Gasolina</h2>
+                                            <p className="text-sm sm:text-base text-zinc-400">Total mensal: <span className="text-white font-semibold">{fmt(gasolinaTotal)}</span></p>
+                                        </div>
+                                        <button onClick={() => open('gasolina')} className="w-full btn text-white px-6 py-4 rounded-xl font-semibold mb-6">+ Adicionar Abastecimento</button>
+                                        <div className="space-y-4">
+                                            {data.gasolina.length === 0 ? (
+                                                <div className="card p-8 rounded-2xl text-center text-zinc-400">
+                                                    <p>Nenhum abastecimento registrado ainda</p>
+                                                </div>
+                                            ) : data.gasolina.map(g => (
+                                                <div key={g.id} className="card p-4 sm:p-6 rounded-2xl flex flex-col sm:flex-row justify-between gap-4">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <span className="text-2xl">{g.veiculo === 'carro' ? '🚗' : '🏍️'}</span>
+                                                            <h4 className="font-semibold text-lg sm:text-xl">{g.veiculo === 'carro' ? 'Carro' : 'Moto'}</h4>
+                                                        </div>
+                                                        {g.litros && <p className="text-xs sm:text-sm text-zinc-400">{g.litros} litros</p>}
+                                                        {g.data && <p className="text-xs sm:text-sm text-zinc-400">{new Date(g.data).toLocaleDateString('pt-BR')}</p>}
+                                                        {g.local && <p className="text-xs sm:text-sm text-zinc-400">Local: {g.local}</p>}
+                                                    </div>
+                                                    <div className="flex justify-between sm:justify-end items-center gap-4">
+                                                        <p className="text-2xl sm:text-3xl font-bold text-yellow-500">{fmt(g.valor)}</p>
+                                                        <div className="flex sm:flex-col gap-3 sm:gap-2">
+                                                            <button onClick={() => open('gasolina', g)} className="text-blue-500 text-sm">Editar</button>
+                                                            <button onClick={() => del('gasolina', g.id)} className="text-red-500 text-sm">Remover</button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -698,6 +786,17 @@
                                                     <>
                                                         <input type="text" placeholder="Descrição" value={form.descricao || ''} onChange={e => setForm({ ...form, descricao: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl" />
                                                         <input type="number" placeholder="Valor" value={form.valor || ''} onChange={e => setForm({ ...form, valor: parseFloat(e.target.value) })} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                        <select value={form.categoria || ''} onChange={e => setForm({ ...form, categoria: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl">
+                                                            <option value="">Selecione a categoria</option>
+                                                            <option value="Alimentação">🍔 Alimentação</option>
+                                                            <option value="Transporte">🚗 Transporte</option>
+                                                            <option value="Saúde">🏥 Saúde</option>
+                                                            <option value="Educação">📚 Educação</option>
+                                                            <option value="Lazer">🎮 Lazer</option>
+                                                            <option value="Vestuário">👕 Vestuário</option>
+                                                            <option value="Moradia">🏠 Moradia</option>
+                                                            <option value="Outros">📦 Outros</option>
+                                                        </select>
                                                         <select value={form.usuarioId || 1} onChange={e => setForm({ ...form, usuarioId: parseInt(e.target.value) })} className="w-full input text-white px-4 py-3 rounded-xl">
                                                             {data.users.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
                                                         </select>
@@ -806,6 +905,55 @@
                                                         </select>
                                                         <input type="number" placeholder="Valor" value={form.valor || ''} onChange={e => setForm({ ...form, valor: parseFloat(e.target.value) })} className="w-full input text-white px-4 py-3 rounded-xl" />
                                                         <input type="text" placeholder="Descrição" value={form.descricao || ''} onChange={e => setForm({ ...form, descricao: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                    </>
+                                                )}
+                                                {modal === 'parcela' && (
+                                                    <>
+                                                        <input type="text" placeholder="Nome do Produto" value={form.produto || ''} onChange={e => setForm({ ...form, produto: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                        <select value={form.categoria || ''} onChange={e => setForm({ ...form, categoria: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl">
+                                                            <option value="">Selecione a categoria</option>
+                                                            <option value="Eletrodomésticos">🔌 Eletrodomésticos</option>
+                                                            <option value="Eletrônicos">📱 Eletrônicos</option>
+                                                            <option value="Móveis">🛋️ Móveis</option>
+                                                            <option value="Vestuário">👕 Vestuário</option>
+                                                            <option value="Veículo">🚗 Veículo</option>
+                                                            <option value="Reforma">🔨 Reforma</option>
+                                                            <option value="Outros">📦 Outros</option>
+                                                        </select>
+                                                        <input type="number" placeholder="Valor Total da Compra" value={form.valorTotal || ''} onChange={e => {
+                                                            const vt = parseFloat(e.target.value);
+                                                            const tp = form.totalParcelas || 1;
+                                                            setForm({ ...form, valorTotal: vt, valorParcela: vt / tp });
+                                                        }} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                        <input type="number" placeholder="Número de Parcelas" value={form.totalParcelas || ''} onChange={e => {
+                                                            const tp = parseInt(e.target.value);
+                                                            const vt = form.valorTotal || 0;
+                                                            setForm({ ...form, totalParcelas: tp, valorParcela: vt / tp });
+                                                        }} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                        <div className="bg-zinc-800 p-4 rounded-xl">
+                                                            <p className="text-sm text-zinc-400 mb-1">Valor da Parcela</p>
+                                                            <p className="text-2xl font-bold text-orange-500">{fmt(form.valorParcela || 0)}</p>
+                                                        </div>
+                                                        <input type="number" placeholder="Parcelas Já Pagas" value={form.parcelasPagas || ''} onChange={e => setForm({ ...form, parcelasPagas: parseInt(e.target.value) })} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                        <input type="date" placeholder="Data da Compra" value={form.data || ''} onChange={e => setForm({ ...form, data: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                    </>
+                                                )}
+                                                {modal === 'gasolina' && (
+                                                    <>
+                                                        <select value={form.veiculo || 'carro'} onChange={e => setForm({ ...form, veiculo: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl">
+                                                            <option value="carro">🚗 Carro</option>
+                                                            <option value="moto">🏍️ Moto</option>
+                                                        </select>
+                                                        <input type="number" placeholder="Valor Pago" value={form.valor || ''} onChange={e => setForm({ ...form, valor: parseFloat(e.target.value) })} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                        <input type="number" placeholder="Litros (opcional)" value={form.litros || ''} onChange={e => setForm({ ...form, litros: parseFloat(e.target.value) })} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                        {form.valor && form.litros && (
+                                                            <div className="bg-zinc-800 p-4 rounded-xl">
+                                                                <p className="text-sm text-zinc-400 mb-1">Preço por Litro</p>
+                                                                <p className="text-xl font-bold text-yellow-500">{fmt(form.valor / form.litros)}</p>
+                                                            </div>
+                                                        )}
+                                                        <input type="text" placeholder="Local (opcional)" value={form.local || ''} onChange={e => setForm({ ...form, local: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl" />
+                                                        <input type="date" value={form.data || ''} onChange={e => setForm({ ...form, data: e.target.value })} className="w-full input text-white px-4 py-3 rounded-xl" />
                                                     </>
                                                 )}
                                                 <div className="flex gap-3 pt-2">
